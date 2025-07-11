@@ -74,15 +74,4 @@ public class UploadMovementsUseCase {
                     e.getMessage()));
         }
     }
-
-    private boolean isValidISO8601(String date) {
-        try {
-            DateTimeFormatter isoFormatter = DateTimeFormatter.ISO_DATE_TIME;
-            LocalDateTime.parse(date, isoFormatter);
-            return true;
-        } catch (DateTimeParseException e) {
-            return false;
-        }
-    }
-
 }
