@@ -1,0 +1,38 @@
+server:
+  port: 8081
+spring:
+  application:
+    name: "OpenBox"
+  devtools:
+    add-properties: false
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+  h2:
+    console:
+      enabled: true
+      path: "/h2"
+  profiles:
+    include: null
+  data:
+    mongodb:
+      uri: mongodb+srv://test:test@cluster0.kpcudmd.mongodb.net/cash
+  rabbitmq:
+    host: possum.lmq.cloudamqp.com
+    port: 5671
+    username: gkqkhzcd
+    password: yy3Nr2UtxRl9u0b0SFQ4pmJEjMlQxI7O
+    virtual-host: gkqkhzcd
+    ssl:
+      enabled: true
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health,prometheus"
+  endpoint:
+    health:
+      probes:
+        enabled: true
+cors:
+  allowed-origins: "http://localhost:4200,http://localhost:8080"
