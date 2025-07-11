@@ -67,54 +67,7 @@ public class UploadMovementsUseCase {
     private Mono<Movement> validateAndSave(String boxId, Map<String, String> recordMovements,
                                            Set<String> processedMovementIds) {
         try {
-            if (!recordMovements.containsKey("movementId") || !recordMovements.containsKey("type") ||
-                    !recordMovements.containsKey("amount") || !recordMovements.containsKey("currency") ||
-                    !recordMovements.containsKey("description") || !recordMovements.containsKey("date")) {
-                return Mono.error(new RuntimeException("Record is missing required fields: " + recordMovements));
-            }
-            String movementId = recordMovements.get("movementId").trim();
-            String type = recordMovements.get("type").trim();
-            BigDecimal amount = new BigDecimal(recordMovements.get("amount").trim());
-            String currency = recordMovements.get("currency").trim();
-            String description = recordMovements.get("description").trim();
-            String boxIdFile = recordMovements.get("boxId").trim();
-            if (boxIdFile.isEmpty()) {
-                return Mono.error(new RuntimeException("Box ID cannot be empty: " + recordMovements));
-            }
-            if (!boxIdFile.equals(boxId)) {
-                return Mono.error(new RuntimeException("Box ID in record does not match provided boxId"));
-            }
-            if (movementId.isEmpty()) {
-                return Mono.error(new RuntimeException("Movement ID cannot be empty: " + recordMovements));
-            }
-            if (!processedMovementIds.add(movementId)) {
-                return Mono.error(new RuntimeException("Duplicate movement ID found: " + movementId));
-            }
-            if (!isValidISO8601(recordMovements.get("date").trim())) {
-                return Mono.error(new RuntimeException("Invalid date format. Expected ISO 8601: " + recordMovements.get("date")));
-            }
-            LocalDateTime date = LocalDateTime.parse(recordMovements.get("date").trim());
-            if (!type.equals("INCOME") && !type.equals("EXPENSE")) {
-                return Mono.error(new RuntimeException("Invalid type. Expected INCOME or EXPENSE: " + type));
-            }
-            if (amount.compareTo(BigDecimal.ZERO) <= 0) {
-                return Mono.error(new RuntimeException("Amount must be greater than zero: " + amount));
-            }
-            if (!ALLOWED_CURRENCIES.contains(currency)) {
-                return Mono.error(new RuntimeException("Invalid currency. Allowed values are: " + ALLOWED_CURRENCIES
-                        + ". Provided: " + currency));
-            }
-            if (description.isEmpty()) {
-                return Mono.error(new RuntimeException("Description cannot be empty: " + recordMovements));
-            }
-            Movement movement = new Movement();
-            movement.setMovementId(movementId);
-            movement.setBoxId(boxId);
-            movement.setDate(date);
-            movement.setType(MovementType.valueOf(type.toUpperCase()));
-            movement.setAmount(amount);
-            movement.setCurrency(currency);
-            movement.setDescription(description);
+            Movement movement = Movement.toRecord(recordMovements, boxId, processedMovementIds);
             return movementRepository.save(movement);
         } catch (Exception e) {
             return Mono.error(new RuntimeException("Error processing record: " + recordMovements + ". Error: " +
