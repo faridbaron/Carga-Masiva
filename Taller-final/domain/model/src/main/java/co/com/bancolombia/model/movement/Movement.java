@@ -70,7 +70,7 @@ public class Movement {
         this.description = description;
     }
 
-    private static final Set<String> ALLOWED_CURRENCIES = Set.of("USD", "PEN", "COP", "PER"); // ejemplo
+    private static final Set<String> ALLOWED_CURRENCIES = Set.of("USD", "PEN", "COP", "PER");
     public static Movement toRecord(Map<String, String> record, String providedBoxId, Set<String> processedIds) {
         String movementId = record.get("movementId");
         String boxIdFile = record.get("boxId");
@@ -130,7 +130,7 @@ public class Movement {
     }
     private static boolean isValidISO8601(String date) {
         try {
-            LocalDateTime.parse(date); // o usar DateTimeFormatter.ISO_DATE_TIME
+            LocalDateTime.parse(date);
             return true;
         } catch (Exception e) {
             return false;
