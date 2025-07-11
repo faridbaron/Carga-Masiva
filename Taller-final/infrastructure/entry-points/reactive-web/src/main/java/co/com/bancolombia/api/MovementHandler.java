@@ -1,5 +1,6 @@
 package co.com.bancolombia.api;
 
+import co.com.bancolombia.model.movement.UploadReport;
 import co.com.bancolombia.usecase.audit.AuditUseCase;
 import co.com.bancolombia.usecase.uploadmovements.UploadMovementsUseCase;
 import org.springframework.core.io.buffer.DataBufferUtils;
@@ -28,21 +29,24 @@ public class MovementHandler {
 
     public Mono<ServerResponse> uploadMovements(ServerRequest request) {
         String boxId = request.pathVariable("boxId");
-        AtomicReference<String> filename = new AtomicReference<>(null);
-        AtomicReference<Integer> totalSize = new AtomicReference<>(0);
         String user = Optional.ofNullable(request.headers().firstHeader("X-User"))
                 .filter(h -> !h.isEmpty())
                 .orElse("anonymous");
+
         return request.multipartData()
                 .flatMap(parts -> {
                     Part filePart = parts.toSingleValueMap().get("file");
                     if (filePart == null) {
-                        return Mono.error(new RuntimeException("File part is missing in the request"));
+                        return logAndRespond(boxId, user, null,
+                                "File part is missing in the request", null, 0, 400);
                     }
-                    filename.set(filePart.headers().getContentDisposition().getFilename());
-                    if (filename.get() == null || (!filename.get().endsWith(".txt") && !filename.get().endsWith(".csv"))) {
-                        return Mono.error(new RuntimeException("Invalid file type: Only txt/csv files are allowed"));
+
+                    String filename = filePart.headers().getContentDisposition().getFilename();
+                    if (!isSupportedFileType(filename)) {
+                        return logAndRespond(boxId, user, null,
+                                "Invalid file type. Only .txt and .csv files are allowed.", filename, 0, 415);
                     }
+
                     return filePart.content()
                             .map(dataBuffer -> {
                                 byte[] bytes = new byte[dataBuffer.readableByteCount()];
@@ -51,26 +55,37 @@ public class MovementHandler {
                                 return ByteBuffer.wrap(bytes);
                             })
                             .collectList()
-                            .flatMap(byteBuffers -> {
-                                totalSize.set(byteBuffers.stream()
-                                        .mapToInt(ByteBuffer::remaining)
-                                        .sum());
-                                if (totalSize.get() > 5 * 1024 * 1024) {
-                                    return Mono.error(new RuntimeException("File size exceeds 5MB limit"));
+                            .flatMap(buffers -> {
+                                int totalSize = buffers.stream().mapToInt(ByteBuffer::remaining).sum();
+                                if (totalSize > 5 * 1024 * 1024) {
+                                    return logAndRespond(boxId, user, null,
+                                            "File size exceeds the limit of 5MB", filename, totalSize, 400);
                                 }
-                                return movementsUseCase.uploadCSV(boxId, Flux.fromIterable(byteBuffers), user)
-                                        .flatMap(report -> auditUseCase.logUpload(boxId, user, report, null,
-                                                        filename.get(), totalSize.get())
-                                                .thenReturn(report))
-                                        .flatMap(report -> ServerResponse.ok()
-                                                .contentType(MediaType.APPLICATION_JSON)
-                                                .bodyValue(report));
+
+                                return movementsUseCase.uploadCSV(boxId, Flux.fromIterable(buffers), user)
+                                        .flatMap(report ->
+                                                auditUseCase.logUpload(boxId, user, report, null, filename, totalSize)
+                                                        .then(ServerResponse.ok()
+                                                                .contentType(MediaType.APPLICATION_JSON)
+                                                                .bodyValue(report))
+                                        );
                             });
                 })
-                .onErrorResume(e ->
-                        auditUseCase.logUpload(boxId, user, null, e, filename.get(), totalSize.get())
-                                .then(ServerResponse.status(500)
-                                        .bodyValue("Error processing file upload: " + e.getMessage()))
-                );
+                .onErrorResume(RuntimeException.class, e -> {
+                    int status = "BoxId not found".equals(e.getMessage()) ? 404 : 500;
+                    return logAndRespond(boxId, user, null, e.getMessage(), null, 0, status);
+                });
     }
+
+    private boolean isSupportedFileType(String filename) {
+        if (filename == null) return false;
+        return filename.endsWith(".csv") || filename.endsWith(".txt");
+    }
+
+    private Mono<ServerResponse> logAndRespond(String boxId, String user, UploadReport report,
+                                               String errorMsg, String filename, int size, int status) {
+        return auditUseCase.logUpload(boxId, user, report, errorMsg, filename, size)
+                .then(ServerResponse.status(status).bodyValue(errorMsg));
+    }
+
 }

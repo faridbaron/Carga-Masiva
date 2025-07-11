@@ -15,7 +15,7 @@ public class AuditUseCase {
         this.auditRepository = auditRepository;
     }
 
-    public Mono<Void> logUpload(String boxId, String user, UploadReport report, Throwable error,
+    public Mono<Void> logUpload(String boxId, String user, UploadReport report, String error,
                                 String filename, int fileSizeBytes) {
 
         String status = (error == null) ? "SUCCESS" : "FAILURE";
@@ -24,7 +24,7 @@ public class AuditUseCase {
             details = String.format("Processed: %d, Success: %d, Errors: %d",
                     report.getTotal(), report.getSuccess(), report.getFailed());
         } else if (error != null) {
-            details = "Error: " + error.getMessage();
+            details = "Error: " + error;
         } else {
             details = "Unknown result";
         }

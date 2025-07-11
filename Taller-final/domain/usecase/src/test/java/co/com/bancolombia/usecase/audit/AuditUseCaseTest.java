@@ -58,7 +58,7 @@ class AuditUseCaseTest {
         Throwable error = new RuntimeException("Test error");
         when(auditRepository.save(any(Audit.class))).thenReturn(Mono.empty());
 
-        StepVerifier.create(auditUseCase.logUpload("box123", "user123", null, error, "file.csv", 2048))
+        StepVerifier.create(auditUseCase.logUpload("box123", "user123", null, error.getMessage(), "file.csv", 2048))
                 .verifyComplete();
 
         ArgumentCaptor<Audit> captor = ArgumentCaptor.forClass(Audit.class);
@@ -89,7 +89,7 @@ class AuditUseCaseTest {
         Throwable error = new RuntimeException("Another error");
         when(auditRepository.save(any(Audit.class))).thenReturn(Mono.empty());
 
-        StepVerifier.create(auditUseCase.logUpload("box123", "user123", null, error, "file.csv", 2048))
+        StepVerifier.create(auditUseCase.logUpload("box123", "user123", null, error.getMessage(), "file.csv", 2048))
                 .verifyComplete();
 
         ArgumentCaptor<Audit> captor = ArgumentCaptor.forClass(Audit.class);

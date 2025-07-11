@@ -40,7 +40,7 @@ public class UploadMovementsUseCase {
         AtomicInteger successCount = new AtomicInteger(0);
         AtomicInteger errorCount = new AtomicInteger(0);
         return boxRepository.findById(boxId)
-                .switchIfEmpty(Mono.error(new RuntimeException("Box not found with id: " + boxId)))
+                .switchIfEmpty(Mono.error(new RuntimeException("BoxId not found")))
                 .thenMany(byteBuffer.map(ByteBuffer::array)
                         .flatMap(renderFileGateway::render))
                 .flatMap(recordMovement -> validateAndSave(boxId, recordMovement, processedMovementIds)
@@ -67,10 +67,15 @@ public class UploadMovementsUseCase {
     private Mono<Movement> validateAndSave(String boxId, Map<String, String> recordMovements,
                                            Set<String> processedMovementIds) {
         try {
+            if (!recordMovements.containsKey("movementId") || !recordMovements.containsKey("type") ||
+                    !recordMovements.containsKey("amount") || !recordMovements.containsKey("currency") ||
+                    !recordMovements.containsKey("description") || !recordMovements.containsKey("date")) {
+                return Mono.error(new IllegalArgumentException("Record is missing required fields: " + recordMovements));
+            }
             Movement movement = Movement.toRecord(recordMovements, boxId, processedMovementIds);
             return movementRepository.save(movement);
         } catch (Exception e) {
-            return Mono.error(new RuntimeException("Error processing record: " + recordMovements + ". Error: " +
+            return Mono.error(new IllegalArgumentException("Error processing record: " + recordMovements + ". Error: " +
                     e.getMessage()));
         }
     }

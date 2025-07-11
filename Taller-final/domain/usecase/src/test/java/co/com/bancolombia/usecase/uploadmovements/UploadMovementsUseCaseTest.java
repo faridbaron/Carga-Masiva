@@ -91,7 +91,7 @@ class UploadMovementsUseCaseTest {
 
         StepVerifier.create(uploadMovementsUseCase.uploadCSV(boxId, Flux.just(byteBuffer), responsibleUser))
                 .expectErrorMatches(throwable -> throwable instanceof RuntimeException &&
-                        throwable.getMessage().equals("Box not found with id: " + boxId))
+                        throwable.getMessage().equals("BoxId not found"))
                 .verify();
 
         verify(boxRepository).findById(boxId);
